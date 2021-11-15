@@ -28,24 +28,16 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
   public static float[] MEANNULL = new float[] {0.0f, 0.0f, 0.0f};
   public static float[] STDONE = new float[] {1.0f, 1.0f, 1.0f};
-  public static float maximum(float[] array) {
-    if (array.length <= 0)
-      throw new IllegalArgumentException("The array is empty");
-    float max = array[0];
-    for (int i = 1; i < array.length; i++)
-      if (array[i] > max)
-        max = array[i];
-    return max;
+
+  public static float[] add(float[] first, float[] second) {
+    int length = Math.min(first.length, second.length);
+    float[] result = new float[length];
+    for (int i = 0; i < length; i++) {
+      result[i] = first[i] + second[i];
+    }
+    return result;
   }
-  public static float minimum(float[] array) {
-    if (array.length <= 0)
-      throw new IllegalArgumentException("The array is empty");
-    float min = array[0];
-    for (int i = 1; i < array.length; i++)
-      if (array[i] < min)
-        min = array[i];
-    return min;
-  }
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -66,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
       // loading serialized torchscript module from packaged into app android asset model.pt,
       // app/src/model/assets/model.pt
-      module = Module.load(assetFilePath(this, "model_36.ptl"));
+      module = Module.load(assetFilePath(this, "dummy_model.ptl"));
     } catch (IOException e) {
       Log.e("CervicalApp", "Error reading assets", e);
       finish();
@@ -83,15 +75,31 @@ public class MainActivity extends AppCompatActivity {
 
     final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
 
-    // Multiple forward passes to emulate MC iterations
-    int mc_it = 1;
-    for (int i = 0; i < mc_it; i++) {
-      final Tensor tmp = module.forward(IValue.from(inputTensor)).toTensor();
+    int mcIt = 0;
+    final int nOutputNeurons = 3;
+    float[] softmaxScores = new float[nOutputNeurons];
+
+    if (mcIt > 0) {
+      // Multiple forward passes to simulate MC iterations
+      float[] mcScore = new float[nOutputNeurons];
+      for (int i = 0; i < mcIt; i++) {
+        float[] score = module.forward(IValue.from(inputTensor)).toTensor().getDataAsFloatArray();
+        softmaxScores = softmax(score);
+        mcScore = add(mcScore, softmaxScores);
+      }
+
+      // Get mean score
+      for (int i = 0; i < nOutputNeurons; i++) {
+        softmaxScores[i] = mcScore[i] / mcIt;
+      }
+    }
+    else {
+      // getting tensor content as java array of floats
+      final float[] scores = outputTensor.getDataAsFloatArray();
+      softmaxScores = softmax(scores);
     }
 
-    // getting tensor content as java array of floats
-    final float[] scores = outputTensor.getDataAsFloatArray();
-    final float[] softmaxScores = softmax(scores);
+
     // searching for the index with maximum score
     float maxScore = -Float.MAX_VALUE;
     int maxScoreIdx = -1;
