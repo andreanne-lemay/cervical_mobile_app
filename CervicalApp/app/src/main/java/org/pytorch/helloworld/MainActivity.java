@@ -14,14 +14,13 @@ import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
-import org.pytorch.MemoryFormat;
+import org.pytorch.Device;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Math;
-import java.nio.FloatBuffer;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -58,7 +57,14 @@ public class MainActivity extends AppCompatActivity {
 
       // loading serialized torchscript module from packaged into app android asset model.pt,
       // app/src/model/assets/model.pt
-      module = Module.load(assetFilePath(this, "dummy_model.ptl"));
+
+        // cpu
+        //module = LiteModuleLoader.load( assetFilePath( this, "dummy_model.ptl"));
+
+        // vulkan
+        module = Module.load ( assetFilePath(this,"dummy_model_vulkan.pt"), null, Device.VULKAN);
+
+
     } catch (IOException e) {
       Log.e("CervicalApp", "Error reading assets", e);
       finish();

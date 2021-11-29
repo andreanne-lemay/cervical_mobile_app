@@ -1,15 +1,14 @@
 apply plugin: 'com.android.application'
 
 repositories {
-    jcenter()
     maven {
         url "https://oss.sonatype.org/content/repositories/snapshots"
     }
 }
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion "28.0.2"
+    compileSdkVersion 30
+    buildToolsVersion '30.0.2'
     defaultConfig {
         applicationId "org.pytorch.helloworld"
         minSdkVersion 21
@@ -26,6 +25,16 @@ android {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'org.pytorch:pytorch_android:1.8.0'
-    implementation 'org.pytorch:pytorch_android_torchvision:1.8.0'
+    //implementation files('pytorch_android-release.aar')
+    //implementation files('pytorch_android_torchvision-release.aar')
+    //implementation 'com.facebook.soloader:nativeloader:0.10.1'
+    //implementation 'com.facebook.fbjni:fbjni-java-only:0.2.2'
+
+//  works with cpu model
+//    implementation 'org.pytorch:pytorch_android_lite:1.10.0'
+//    implementation 'org.pytorch:pytorch_android_torchvision_lite:1.10.0'
+
+    // for vulkan model
+    implementation 'org.pytorch:pytorch_android:1.10.0'
+    implementation 'org.pytorch:pytorch_android_torchvision:1.10.0'
 }
