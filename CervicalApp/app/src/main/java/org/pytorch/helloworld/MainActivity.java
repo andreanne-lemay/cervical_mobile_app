@@ -24,6 +24,10 @@ import java.lang.Math;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+//import ai.onnxruntime.OrtEnvironment;
+//import ai.onnxruntime.OrtException;
+//import ai.onnxruntime.OrtSession;
+
 public class MainActivity extends AppCompatActivity {
   public static float[] MEANNULL = new float[] {0.0f, 0.0f, 0.0f};
   public static float[] STDONE = new float[] {1.0f, 1.0f, 1.0f};
@@ -58,11 +62,22 @@ public class MainActivity extends AppCompatActivity {
       // loading serialized torchscript module from packaged into app android asset model.pt,
       // app/src/model/assets/model.pt
 
-        // cpu
-        //module = LiteModuleLoader.load( assetFilePath( this, "dummy_model.ptl"));
+      // cpu
+      module = Module.load(assetFilePath(this, "dummy_model.ptl"));
+      // module = Module.load(assetFilePath(this, "dummy_model_quantized.ptl"));
+      // module = Module.load(assetFilePath(this, "dummy_model_resnet.ptl"));
+      // module = Module.load(assetFilePath(this, "dummy_model_resnet.ptl"));
+      // module = Module.load(assetFilePath(this, "dummy_model_resnet_nnapi.ptl"));
 
-        // vulkan
-        module = Module.load ( assetFilePath(this,"dummy_model_vulkan.pt"), null, Device.VULKAN);
+      // onnx - not working yet
+      // OrtSession.SessionOptions session_options = new OrtSession.SessionOptions();
+      // session_options.addConfigEntry("session.load_model_format", "ORT");
+      //
+      // OrtEnvironment env = OrtEnvironment.getEnvironment();
+      // OrtSession session = env.createSession(assetFilePath(this,"model.basic.ort"), session_options);
+
+      // vulkan - not working yet
+      // module = Module.load ( assetFilePath(this,"dummy_model_vulkan.pt"), null, Device.VULKAN);
 
 
     } catch (IOException e) {
