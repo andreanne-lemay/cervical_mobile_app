@@ -1,6 +1,7 @@
 import torch
 import monai
 from torch.utils.mobile_optimizer import optimize_for_mobile
+from densenet import Densenet121
 
 # hack downloading model ssl verification
 import ssl
@@ -9,7 +10,8 @@ ssl._create_default_https_context = ssl._create_unverified_context
 ## Download custom model weights
 # model_path = "path/to/model.pth"
 
-densenet = getattr(monai.networks.nets, "densenet121")
+densenet = Densenet121
+# densenet = getattr(monai.networks.nets, "densenet121")
 model = densenet(spatial_dims=2,
                  in_channels=3,
                  out_channels=3,
@@ -17,7 +19,7 @@ model = densenet(spatial_dims=2,
                  pretrained=True)
 
 ## Load custom path into model
-device = "cpu"
+# device = "cpu"
 # model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 
