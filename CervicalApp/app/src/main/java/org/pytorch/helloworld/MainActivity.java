@@ -63,11 +63,11 @@ public class MainActivity extends AppCompatActivity {
       // app/src/model/assets/model.pt
 
       // cpu
-      module = Module.load(assetFilePath(this, "dummy_model.ptl"));
+      // module = Module.load(assetFilePath(this, "dummy_model.ptl"));
       // module = Module.load(assetFilePath(this, "dummy_model_quantized.ptl"));
       // module = Module.load(assetFilePath(this, "dummy_model_resnet.ptl"));
       // module = Module.load(assetFilePath(this, "dummy_model_resnet.ptl"));
-      // module = Module.load(assetFilePath(this, "dummy_model_resnet_nnapi.ptl"));
+      module = Module.load(assetFilePath(this, "dummy_model_densenet_nnapi.ptl"));
 
       // onnx - not working yet
       // OrtSession.SessionOptions session_options = new OrtSession.SessionOptions();

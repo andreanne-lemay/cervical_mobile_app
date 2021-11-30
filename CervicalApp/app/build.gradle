@@ -37,4 +37,7 @@ dependencies {
     // for vulkan model
     implementation 'org.pytorch:pytorch_android:1.10.0'
     implementation 'org.pytorch:pytorch_android_torchvision:1.10.0'
+
+    // onnxruntime
+    // implementation 'com.microsoft.onnxruntime:onnxruntime-mobile:1.9.0';
 }
