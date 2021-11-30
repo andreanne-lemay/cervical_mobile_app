@@ -1,18 +1,19 @@
 import torch
 import monai
-from monai.networks.nets.densenet import Densenet121
+from densenet import Densenet121
 from torch.utils.mobile_optimizer import optimize_for_mobile
 import torch.utils.bundled_inputs
 import torch.utils.mobile_optimizer
 import torch.backends._nnapi.prepare
 import torchvision
+import dropout_resnet
 
 # Download custom model weights
 # model_path = "path/to/model.pth"
-# model_path = "/home/andreanne/Documents/dataset/cervix/model_36.pth"
 
 # Densenet121
-densenet = getattr(monai.networks.nets, "densenet121")
+densenet = Densenet121
+# densenet = getattr(monai.networks.nets, 'densenet121')
 model = densenet(spatial_dims=2,
                   in_channels=3,
                   out_channels=3,
@@ -20,7 +21,7 @@ model = densenet(spatial_dims=2,
                   pretrained=True)
 
 # Resnet50
-# model = torchvision.models.resnet50(pretrained=True)
+# model = getattr(dropout_resnet, "resnet50")(pretrained=True)
 # model.fc = torch.nn.Linear(model.fc.in_features, 3)
 
 # Load custom path into model
@@ -28,8 +29,9 @@ model = densenet(spatial_dims=2,
 # model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 
+output = model(torch.ones((1, 3, 256, 256)))
+
 for name, m in model.named_modules():
-    print(type(m))
     if hasattr(m, 'inplace'):
         m.inplace = False
 
@@ -54,5 +56,5 @@ nnapi_model = torch.jit.script(BundleWrapper(nnapi_model))
 torch.utils.bundled_inputs.augment_model_with_bundled_inputs(
     nnapi_model, [(torch.utils.bundled_inputs.bundle_large_tensor(input_tensor),)])
 
-nnapi_model._save_for_lite_interpreter("dummy_model_resnet_nnapi.ptl")
-optimize_for_mobile(traced)._save_for_lite_interpreter("dummy_model_resnet.ptl")
+nnapi_model._save_for_lite_interpreter("dummy_model_densenet_nnapi.ptl")
+optimize_for_mobile(traced)._save_for_lite_interpreter("dummy_model_densenet.ptl")
