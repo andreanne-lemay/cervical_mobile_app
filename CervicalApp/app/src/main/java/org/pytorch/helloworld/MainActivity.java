@@ -1,6 +1,8 @@
 package org.pytorch.helloworld;
 
+import android.content.res.AssetManager;
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -14,6 +16,7 @@ import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
+import org.tensorflow.lite.nnapi.NnApiDelegate;
 import org.pytorch.Device;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,12 +24,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Math;
+import java.nio.MappedByteBuffer;
+import java.io.FileInputStream;
+import java.nio.channels.FileChannel;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Arrays;
+
 
 import androidx.appcompat.app.AppCompatActivity;
 
 //import ai.onnxruntime.OrtEnvironment;
 //import ai.onnxruntime.OrtException;
 //import ai.onnxruntime.OrtSession;
+
+import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.gpu.CompatibilityList;
+import org.tensorflow.lite.gpu.GpuDelegate;
+import org.tensorflow.lite.flex.FlexDelegate;
 
 public class MainActivity extends AppCompatActivity {
   public static float[] MEANNULL = new float[] {0.0f, 0.0f, 0.0f};
@@ -67,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
       // module = Module.load(assetFilePath(this, "dummy_model_quantized.ptl"));
       // module = Module.load(assetFilePath(this, "dummy_model_resnet.ptl"));
       // module = Module.load(assetFilePath(this, "dummy_model_resnet.ptl"));
-      module = Module.load(assetFilePath(this, "dummy_model_densenet_nnapi.ptl"));
+      // module = Module.load(assetFilePath(this, "dummy_model_densenet_nnapi.ptl"));
 
       // onnx - not working yet
       // OrtSession.SessionOptions session_options = new OrtSession.SessionOptions();
@@ -89,37 +104,12 @@ public class MainActivity extends AppCompatActivity {
     ImageView imageView = findViewById(R.id.image);
     imageView.setImageBitmap(bitmap);
 
+    int mcIt = 50;
+    // Run PyTorch
+    // float [] softmaxScores = runPytorchInference(bitmap, module, mcIt)
 
-    // preparing input tensor
-    final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
-            MEANNULL, STDONE);
-
-    final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
-
-    int mcIt = 0;
-    final int nOutputNeurons = 3;
-    float[] softmaxScores = new float[nOutputNeurons];
-
-    if (mcIt > 0) {
-      // Multiple forward passes to simulate MC iterations
-      float[] mcScore = new float[nOutputNeurons];
-      for (int i = 0; i < mcIt; i++) {
-        float[] score = module.forward(IValue.from(inputTensor)).toTensor().getDataAsFloatArray();
-        softmaxScores = softmax(score);
-        mcScore = add(mcScore, softmaxScores);
-      }
-
-      // Get mean score
-      for (int i = 0; i < nOutputNeurons; i++) {
-        softmaxScores[i] = mcScore[i] / mcIt;
-      }
-    }
-    else {
-      // getting tensor content as java array of floats
-      final float[] scores = outputTensor.getDataAsFloatArray();
-      softmaxScores = softmax(scores);
-    }
-
+    // Run TFlite
+    float [] softmaxScores = runTFInference(bitmap, mcIt);
 
     // searching for the index with maximum score
     float maxScore = -Float.MAX_VALUE;
@@ -164,6 +154,125 @@ public class MainActivity extends AppCompatActivity {
       }
       return file.getAbsolutePath();
     }
+  }
+
+  private float [] runTFInference(Bitmap bitmap, int mcIt) {
+    Interpreter interpreter = null;
+
+    try {
+      interpreter = getTFInterpreter("model.tflite");
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    final int nOutputNeurons = 3;
+    float [][] result = new float[1][nOutputNeurons];
+    assert interpreter != null;
+    ByteBuffer byteBuffer = convertBitmapToByteBuffer(bitmap);
+    interpreter.run(byteBuffer, result);
+
+    float[] softmaxScores = new float[nOutputNeurons];
+
+    if (mcIt > 0) {
+      // Multiple forward passes to simulate MC iterations
+      float[] mcScore = new float[nOutputNeurons];
+      for (int i = 0; i < mcIt; i++) {
+        interpreter.run(byteBuffer, result);
+        mcScore = add(mcScore, result[0]);
+      }
+      // Get mean score
+      for (int i = 0; i < nOutputNeurons; i++) {
+        softmaxScores[i] = mcScore[i] / mcIt;
+      }
+    }
+    else {
+      softmaxScores = result[0];
+    }
+
+    return softmaxScores;
+  }
+
+  private float [] runPytorchInference(Bitmap bitmap, Module module, int mcIt) {
+    // preparing input tensor
+    final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
+            MEANNULL, STDONE);
+
+    final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+
+    final int nOutputNeurons = 3;
+    float[] softmaxScores = new float[nOutputNeurons];
+
+    if (mcIt > 0) {
+      // Multiple forward passes to simulate MC iterations
+      float[] mcScore = new float[nOutputNeurons];
+      for (int i = 0; i < mcIt; i++) {
+        float[] score = module.forward(IValue.from(inputTensor)).toTensor().getDataAsFloatArray();
+        softmaxScores = softmax(score);
+        mcScore = add(mcScore, softmaxScores);
+      }
+
+      // Get mean score
+      for (int i = 0; i < nOutputNeurons; i++) {
+        softmaxScores[i] = mcScore[i] / mcIt;
+      }
+    }
+    else {
+      // getting tensor content as java array of floats
+      final float[] scores = outputTensor.getDataAsFloatArray();
+      softmaxScores = softmax(scores);
+    }
+
+    return softmaxScores;
+  }
+
+  private ByteBuffer convertBitmapToByteBuffer(Bitmap bitmap) {
+    ByteBuffer byteBuffer;
+    int BATCH_SIZE = 1;
+    int PIXEL_SIZE = 3;
+    int inputSize = 256;
+    boolean quant = false;
+    int IMAGE_MEAN = 0;
+    int IMAGE_STD = 1;
+
+    byteBuffer = ByteBuffer.allocateDirect(4 * BATCH_SIZE * inputSize * inputSize * PIXEL_SIZE);
+
+    byteBuffer.order(ByteOrder.nativeOrder());
+    int[] intValues = new int[inputSize * inputSize];
+    bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
+    int pixel = 0;
+    for (int i = 0; i < inputSize; ++i) {
+      for (int j = 0; j < inputSize; ++j) {
+        final int val = intValues[pixel++];
+        byteBuffer.putFloat((((val >> 16) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+        byteBuffer.putFloat((((val >> 8) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+        byteBuffer.putFloat((((val) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+
+      }
+    }
+    return byteBuffer;
+  }
+
+
+  private MappedByteBuffer loadModelFile(Context context, String modelPath) throws IOException {
+    AssetFileDescriptor fileDescriptor = context.getAssets().openFd(modelPath);
+    FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+    FileChannel fileChannel = inputStream.getChannel();
+    long startOffset = fileDescriptor.getStartOffset();
+    long declaredLength = fileDescriptor.getDeclaredLength();
+    return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+  }
+
+  public Interpreter getTFInterpreter(String modelPath) throws IOException {
+    Interpreter.Options options = new Interpreter.Options();
+//    CompatibilityList compatList = new CompatibilityList();
+//    GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
+//    GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
+//    options.addDelegate(gpuDelegate);
+
+    options.setNumThreads(Runtime.getRuntime().availableProcessors());
+
+    return new Interpreter(loadModelFile(this, modelPath), options);
   }
 
   public float[] softmax(float[] input) {
