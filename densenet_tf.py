@@ -205,7 +205,7 @@ def DenseNet(
       weights=weights)
 
   if input_tensor is None:
-    img_input = layers.Input(shape=input_shape)
+    img_input = layers.Input(shape=input_shape, batch_size=1)
   else:
     if not backend.is_keras_tensor(input_tensor):
       img_input = layers.Input(tensor=input_tensor, shape=input_shape)

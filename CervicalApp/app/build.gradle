@@ -39,9 +39,10 @@ dependencies {
     implementation 'org.pytorch:pytorch_android_torchvision:1.10.0'
 
     // tf
-    implementation 'org.tensorflow:tensorflow-lite:2.4.0'
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.4.0'
+    implementation 'org.tensorflow:tensorflow-lite:0.0.0-nightly-SNAPSHOT'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.5.0'
     implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:0.0.0-nightly-SNAPSHOT'
+    implementation 'org.tensorflow:tensorflow-lite-hexagon:0.0.0-nightly-SNAPSHOT'
 
 
     // onnxruntime

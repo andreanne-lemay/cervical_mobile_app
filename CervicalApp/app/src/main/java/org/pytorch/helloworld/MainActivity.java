@@ -17,6 +17,7 @@ import org.pytorch.Module;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 import org.tensorflow.lite.nnapi.NnApiDelegate;
+import org.tensorflow.lite.HexagonDelegate;
 import org.pytorch.Device;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -265,12 +266,15 @@ public class MainActivity extends AppCompatActivity {
 
   public Interpreter getTFInterpreter(String modelPath) throws IOException {
     Interpreter.Options options = new Interpreter.Options();
-//    CompatibilityList compatList = new CompatibilityList();
-//    GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
-//    GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
-//    options.addDelegate(gpuDelegate);
+    CompatibilityList compatList = new CompatibilityList();
 
-    options.setNumThreads(Runtime.getRuntime().availableProcessors());
+    // Use GPU, comment if CPU wanted
+    GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
+    GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
+    options.addDelegate(gpuDelegate);
+
+    // USE CPU, comment if GPU wanted
+//    options.setNumThreads(Runtime.getRuntime().availableProcessors());
 
     return new Interpreter(loadModelFile(this, modelPath), options);
   }
