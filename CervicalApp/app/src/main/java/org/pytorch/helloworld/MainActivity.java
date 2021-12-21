@@ -266,12 +266,16 @@ public class MainActivity extends AppCompatActivity {
 
   public Interpreter getTFInterpreter(String modelPath) throws IOException {
     Interpreter.Options options = new Interpreter.Options();
-    CompatibilityList compatList = new CompatibilityList();
+
+    // Use NNAPI
+    NnApiDelegate nnApiDelegate = new NnApiDelegate();
+    options.addDelegate(nnApiDelegate);
 
     // Use GPU, comment if CPU wanted
-    GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
-    GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
-    options.addDelegate(gpuDelegate);
+//    CompatibilityList compatList = new CompatibilityList();
+//    GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
+//    GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
+//    options.addDelegate(gpuDelegate);
 
     // USE CPU, comment if GPU wanted
 //    options.setNumThreads(Runtime.getRuntime().availableProcessors());
